@@ -13,7 +13,7 @@
     providers: {
       // nginx on this host (see ../ollama/nginx-ollama-pool.conf) spreads requests across the
       // remote Ollama PCs and falls back to this host's own Ollama when none answer.
-      // It must be a proxy: OpenClaw does not move to the next model when a host is unreachable.
+      // It retries dead PCs within the same request, and spreads jobs by load.
       "ollama-pool": {
         baseUrl: "http://127.0.0.1:11500",
         api: "ollama",

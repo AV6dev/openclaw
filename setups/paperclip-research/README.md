@@ -19,7 +19,9 @@ Paperclip
 
 The switch happens inside OpenClaw, within the same job, so Paperclip never sees a failure and nothing needs reassigning. When NVIDIA rate-limits the key, OpenClaw puts it in cooldown, so the jobs that follow go straight to the Ollama pool until NVIDIA recovers.
 
-**Why nginx:** OpenClaw moves to the next model on rate limits, auth errors and timeouts. It does **not** move on when a machine can't be reached (a PC that's switched off), so the job would just fail. nginx hides dead PCs by trying the next one, with the gateway host as the final backup. That means the pool never fails as long as the gateway host is up.
+**Why nginx:** it spreads jobs across the PCs by load, skips a PC that's switched off or missing the model within the same request, and keeps the gateway host as the final backup. The pool never fails as long as the gateway host is up.
+
+OpenClaw builds from this branch also move to the next model when a host can't be reached (for example, if nginx itself is down). Older OpenClaw releases stop the job instead, so nginx is what makes it reliable on those.
 
 ## Files
 
