@@ -322,6 +322,13 @@ describe("image dimension errors", () => {
   });
 });
 
+describe("network errors", () => {
+  it("fail over without being reported as a timeout", () => {
+    expect(isFailoverErrorMessage("fetch failed")).toBe(true);
+    expect(isTimeoutErrorMessage("fetch failed")).toBe(false);
+  });
+});
+
 describe("classifyFailoverReason", () => {
   it("returns a stable reason", () => {
     expect(classifyFailoverReason("invalid api key")).toBe("auth");
@@ -343,6 +350,11 @@ describe("classifyFailoverReason", () => {
         "521 <!DOCTYPE html><html><head><title>Web server is down</title></head><body>Cloudflare</body></html>",
       ),
     ).toBe("timeout");
+    expect(classifyFailoverReason("fetch failed")).toBe("timeout");
+    expect(classifyFailoverReason("Connection error.")).toBe("timeout");
+    expect(classifyFailoverReason("connect ECONNREFUSED 127.0.0.1:11434")).toBe("timeout");
+    expect(classifyFailoverReason("getaddrinfo ENOTFOUND ollama-host")).toBe("timeout");
+    expect(classifyFailoverReason("connect EHOSTUNREACH 192.168.1.20:11434")).toBe("timeout");
     expect(classifyFailoverReason("string should match pattern")).toBe("format");
     expect(classifyFailoverReason("bad request")).toBeNull();
     expect(

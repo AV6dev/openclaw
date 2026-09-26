@@ -18,6 +18,7 @@ Docs: https://docs.openclaw.ai
 
 ### Fixes
 
+- Agents/Failover: fall back to the next auth profile/model when a provider host is unreachable (`fetch failed`, `ECONNREFUSED`, `EHOSTUNREACH`, `ENOTFOUND`, SDK "Connection error."), so a switched-off local/remote Ollama box no longer ends the run.
 - Fix types in all tests. Typecheck the whole repository.
 - Voice-call: auto-end calls when media streams disconnect to prevent stuck active calls. (#18435) Thanks @JayMishra-source.
 - Gateway/Channels: wire `gateway.channelHealthCheckMinutes` into strict config validation, treat implicit account status as managed for health checks, and harden channel auto-restart flow (preserve restart-attempt caps across crash loops, propagate enabled/configured runtime flags, and stop pending restart backoff after manual stop). Thanks @steipete.

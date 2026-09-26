@@ -3,6 +3,19 @@ import { classifyFailoverReason, type FailoverReason } from "./pi-embedded-helpe
 const TIMEOUT_HINT_RE =
   /timeout|timed out|deadline exceeded|context deadline exceeded|stop reason:\s*abort|reason:\s*abort|unhandled stop reason:\s*abort/i;
 const ABORT_TIMEOUT_RE = /request was aborted|request aborted/i;
+// Socket-level failures worth trying the next profile/model for, including an
+// unreachable host (ECONNREFUSED/EHOSTUNREACH/ENOTFOUND...).
+const TRANSIENT_NETWORK_CODES = new Set([
+  "ETIMEDOUT",
+  "ESOCKETTIMEDOUT",
+  "ECONNRESET",
+  "ECONNABORTED",
+  "ECONNREFUSED",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+]);
 
 export class FailoverError extends Error {
   readonly reason: FailoverReason;
@@ -165,8 +178,13 @@ export function resolveFailoverReasonFromError(err: unknown): FailoverReason | n
     return "format";
   }
 
-  const code = (getErrorCode(err) ?? "").toUpperCase();
-  if (["ETIMEDOUT", "ESOCKETTIMEDOUT", "ECONNRESET", "ECONNABORTED"].includes(code)) {
+  // fetch() wraps socket errors: the code lives on `cause` ("fetch failed" → ECONNREFUSED).
+  const cause =
+    err && typeof err === "object" && "cause" in err
+      ? (err as { cause?: unknown }).cause
+      : undefined;
+  const code = (getErrorCode(err) ?? getErrorCode(cause) ?? "").toUpperCase();
+  if (TRANSIENT_NETWORK_CODES.has(code)) {
     return "timeout";
   }
   if (isTimeoutError(err)) {

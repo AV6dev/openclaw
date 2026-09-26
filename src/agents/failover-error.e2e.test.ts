@@ -28,6 +28,20 @@ describe("failover-error", () => {
     expect(resolveFailoverReasonFromError({ code: "ECONNRESET" })).toBe("timeout");
   });
 
+  it("infers timeout when the provider host is unreachable", () => {
+    expect(resolveFailoverReasonFromError({ code: "ECONNREFUSED" })).toBe("timeout");
+    expect(resolveFailoverReasonFromError({ code: "EHOSTUNREACH" })).toBe("timeout");
+    expect(resolveFailoverReasonFromError({ code: "ENOTFOUND" })).toBe("timeout");
+    // fetch() reports socket errors as "fetch failed" with the code on `cause`.
+    const fetchError = new TypeError("fetch failed", {
+      cause: Object.assign(new Error("connect ECONNREFUSED 100.64.0.11:11434"), {
+        code: "ECONNREFUSED",
+      }),
+    });
+    expect(resolveFailoverReasonFromError(fetchError)).toBe("timeout");
+    expect(resolveFailoverReasonFromError("fetch failed")).toBe("timeout");
+  });
+
   it("infers timeout from abort stop-reason messages", () => {
     expect(resolveFailoverReasonFromError({ message: "Unhandled stop reason: abort" })).toBe(
       "timeout",

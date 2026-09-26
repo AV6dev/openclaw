@@ -603,6 +603,17 @@ const ERROR_PATTERNS = {
     /\breason:\s*abort\b/i,
     /\bunhandled stop reason:\s*abort\b/i,
   ],
+  // Provider host unreachable (machine off, DNS failure, connection dropped).
+  // Kept separate from `timeout` so user-facing text doesn't claim the request timed out.
+  network: [
+    "fetch failed",
+    "connection error",
+    "connection refused",
+    "socket hang up",
+    "network is unreachable",
+    "no route to host",
+    /\b(?:econnrefused|econnreset|ehostunreach|enetunreach|enotfound|eai_again)\b/,
+  ],
   billing: [
     /["']?(?:status|code)["']?\s*[:=]\s*402\b|\bhttp\s*402\b|\berror(?:\s+code)?\s*[:=]?\s*402\b|\b(?:got|returned|received)\s+(?:a\s+)?402\b|^\s*402\s+payment/i,
     "payment required",
@@ -663,6 +674,10 @@ export function isRateLimitErrorMessage(raw: string): boolean {
 
 export function isTimeoutErrorMessage(raw: string): boolean {
   return matchesErrorPatterns(raw, ERROR_PATTERNS.timeout);
+}
+
+function isNetworkErrorMessage(raw: string): boolean {
+  return matchesErrorPatterns(raw, ERROR_PATTERNS.network);
 }
 
 export function isBillingErrorMessage(raw: string): boolean {
@@ -793,6 +808,11 @@ export function classifyFailoverReason(raw: string): FailoverReason | null {
     return "billing";
   }
   if (isTimeoutErrorMessage(raw)) {
+    return "timeout";
+  }
+  if (isNetworkErrorMessage(raw)) {
+    // Treat an unreachable host like a transient transport failure so the next
+    // profile/model is tried (e.g. a local Ollama box that is switched off).
     return "timeout";
   }
   if (isAuthErrorMessage(raw)) {
