@@ -1,0 +1,52 @@
+// Low-cost research agents for Paperclip.
+// Include from ~/.openclaw/openclaw.json with a top-level:
+//   $include: "./research-agents.json5"
+// Arrays are appended on include, so these agents are added to any existing agents.list.
+{
+  tools: {
+    web: {
+      // Brave free tier (BRAVE_API_KEY). Caching avoids paying twice for the same query/page.
+      search: { enabled: true, maxResults: 5, cacheTtlMinutes: 1440 },
+      fetch: { enabled: true, maxChars: 20000, cacheTtlMinutes: 1440 },
+    },
+  },
+
+  agents: {
+    list: [
+      {
+        // Free tier: searches, fetches and summarises sources.
+        id: "researcher",
+        name: "Researcher",
+        workspace: "~/.openclaw/workspace-researcher",
+        model: {
+          primary: "nvidia/meta/llama-3.3-70b-instruct",
+          fallbacks: [
+            "nvidia/nvidia/llama-3.1-nemotron-70b-instruct",
+            // Cheap paid account(s) go here once you know the model id, e.g.:
+            // "openrouter/<provider>/<model>",
+            "anthropic/claude-haiku-4-5",
+          ],
+        },
+        tools: {
+          allow: ["group:web"],
+          loopDetection: { enabled: true, warningThreshold: 6, criticalThreshold: 10, globalCircuitBreakerThreshold: 15 },
+        },
+      },
+      {
+        // Cheap tier: dedupes notes, flags conflicts and gaps. No web access, so it can't wander.
+        id: "research-checker",
+        name: "Research Checker",
+        workspace: "~/.openclaw/workspace-research-checker",
+        model: {
+          primary: "nvidia/nvidia/llama-3.1-nemotron-70b-instruct",
+          fallbacks: [
+            "nvidia/meta/llama-3.3-70b-instruct",
+            // "openrouter/<provider>/<model>",
+            "anthropic/claude-haiku-4-5",
+          ],
+        },
+        tools: { allow: ["session_status"] },
+      },
+    ],
+  },
+}

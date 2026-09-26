@@ -1,0 +1,63 @@
+// Paperclip agent settings for the research team.
+// Enter these in each agent's settings in the Paperclip UI (or POST them via the API).
+// Replace <...> placeholders.
+{
+  researchLead: {
+    name: "Research Lead",
+    role: "Plans research, delegates, writes the final report",
+    adapterType: "claude_local",
+    adapterConfig: {
+      model: "claude-sonnet-5", // Opus only if reports need it
+      effort: "medium",
+      maxTurnsPerRun: 25,
+      timeoutSec: 900,
+      instructionsFilePath: "<absolute path>/setups/paperclip-research/paperclip/research-lead.md",
+    },
+    runtimeConfig: {
+      heartbeat: {
+        enabled: true,
+        intervalSec: 0, // no timer: only wakes when given work
+        wakeOnAssignment: true,
+        wakeOnOnDemand: true,
+        wakeOnAutomation: false,
+      },
+    },
+    budgetMonthlyCents: 1500, // ~£12; raise once you've seen a month of real usage
+  },
+
+  researcher: {
+    name: "Researcher",
+    role: "Finds and summarises sources for one sub-question",
+    reportsTo: "Research Lead",
+    adapterType: "openclaw_gateway",
+    adapterConfig: {
+      url: "ws://<gateway-host>:18789",
+      authToken: "<gateway token>", // use a secret_ref here if your Paperclip version allows it
+      payloadTemplate: { agentId: "researcher" },
+      sessionKeyStrategy: "run", // fresh context per task: nothing carried over to pay for
+      timeoutSec: 300,
+    },
+    runtimeConfig: {
+      heartbeat: { enabled: true, intervalSec: 0, wakeOnAssignment: true, wakeOnOnDemand: true, wakeOnAutomation: false },
+    },
+    budgetMonthlyCents: 300, // only spends if it falls back to paid models
+  },
+
+  researchChecker: {
+    name: "Research Checker",
+    role: "Merges researcher notes, flags conflicts and gaps",
+    reportsTo: "Research Lead",
+    adapterType: "openclaw_gateway",
+    adapterConfig: {
+      url: "ws://<gateway-host>:18789",
+      authToken: "<gateway token>", // use a secret_ref here if your Paperclip version allows it
+      payloadTemplate: { agentId: "research-checker" },
+      sessionKeyStrategy: "run",
+      timeoutSec: 300,
+    },
+    runtimeConfig: {
+      heartbeat: { enabled: true, intervalSec: 0, wakeOnAssignment: true, wakeOnOnDemand: true, wakeOnAutomation: false },
+    },
+    budgetMonthlyCents: 200,
+  },
+}
