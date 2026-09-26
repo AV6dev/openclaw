@@ -25,8 +25,11 @@
     budgetMonthlyCents: 1500, // ~£12; raise once you've seen a month of real usage
   },
 
+  // Worker bees: create Researcher 1, Researcher 2, Researcher 3 with identical settings
+  // (one per job you want running at the same time). They all use the same OpenClaw
+  // "researcher" agent and its free model chain; each Paperclip job gets its own session.
   researcher: {
-    name: "Researcher",
+    name: "Researcher 1", // then "Researcher 2", "Researcher 3"
     role: "Finds and summarises sources for one sub-question",
     reportsTo: "Research Lead",
     adapterType: "openclaw_gateway",
@@ -34,13 +37,15 @@
       url: "ws://<gateway-host>:18789",
       authToken: "<gateway token>", // use a secret_ref here if your Paperclip version allows it
       payloadTemplate: { agentId: "researcher" },
-      sessionKeyStrategy: "run", // fresh context per task: nothing carried over to pay for
-      timeoutSec: 300,
+      sessionKeyStrategy: "run", // fresh context per job
+      // Long enough for a job that ends up on a slow Ollama PC (matches OpenClaw's 1800s).
+      timeoutSec: 1900,
+      waitTimeoutMs: 1900000,
     },
     runtimeConfig: {
       heartbeat: { enabled: true, intervalSec: 0, wakeOnAssignment: true, wakeOnOnDemand: true, wakeOnAutomation: false },
     },
-    budgetMonthlyCents: 300, // only spends if it falls back to paid models
+    budgetMonthlyCents: 100, // every model in the chain is free; this is only a tripwire
   },
 
   researchChecker: {
@@ -53,11 +58,12 @@
       authToken: "<gateway token>", // use a secret_ref here if your Paperclip version allows it
       payloadTemplate: { agentId: "research-checker" },
       sessionKeyStrategy: "run",
-      timeoutSec: 300,
+      timeoutSec: 1900,
+      waitTimeoutMs: 1900000,
     },
     runtimeConfig: {
       heartbeat: { enabled: true, intervalSec: 0, wakeOnAssignment: true, wakeOnOnDemand: true, wakeOnAutomation: false },
     },
-    budgetMonthlyCents: 200,
+    budgetMonthlyCents: 100,
   },
 }

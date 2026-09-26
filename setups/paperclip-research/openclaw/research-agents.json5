@@ -1,20 +1,58 @@
-// Low-cost research agents for Paperclip.
+// Free research agents for Paperclip ("worker bees").
 // Include from ~/.openclaw/openclaw.json with a top-level:
 //   $include: "./research-agents.json5"
 // Arrays are appended on include, so these agents are added to any existing agents.list.
+// Keys you already set in openclaw.json win over the values here.
+//
+// Every job walks this chain until one answers:
+//   NVIDIA Llama 3.3 70B → NVIDIA Nemotron 70B → Ollama pool (remote PCs, then this host)
+// A rate-limited NVIDIA key goes into cooldown, so later jobs skip straight to the next tier
+// until it recovers.
 {
+  models: {
+    providers: {
+      // nginx on this host (see ../ollama/nginx-ollama-pool.conf) spreads requests across the
+      // remote Ollama PCs and falls back to this host's own Ollama when none answer.
+      // It must be a proxy: OpenClaw does not move to the next model when a host is unreachable.
+      "ollama-pool": {
+        baseUrl: "http://127.0.0.1:11500",
+        api: "ollama",
+        apiKey: "ollama-local", // Ollama ignores it; OpenClaw needs a value to treat the provider as available
+        models: [
+          {
+            // Must be pulled on every Ollama machine in the pool.
+            id: "llama3.1:8b",
+            name: "Llama 3.1 8B (Ollama pool)",
+            reasoning: false,
+            input: ["text"],
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            contextWindow: 32768, // sent to Ollama as num_ctx; needs ~16 GB RAM per machine
+            maxTokens: 4096,
+          },
+        ],
+      },
+    },
+  },
+
   tools: {
     web: {
-      // Brave free tier (BRAVE_API_KEY). Caching avoids paying twice for the same query/page.
+      // Brave free tier (BRAVE_API_KEY). Long caching avoids repeating the same query/page.
       search: { enabled: true, maxResults: 5, cacheTtlMinutes: 1440 },
-      fetch: { enabled: true, maxChars: 20000, cacheTtlMinutes: 1440 },
+      // Kept small so 4 pages still fit the Ollama models' 32k context.
+      fetch: { enabled: true, maxChars: 12000, cacheTtlMinutes: 1440 },
     },
   },
 
   agents: {
+    defaults: {
+      // Let several Paperclip researchers run at once (OpenClaw's default is 1).
+      maxConcurrent: 4,
+      // Local models are slow; give a run time to finish on the last tier.
+      timeoutSeconds: 1800,
+    },
     list: [
       {
-        // Free tier: searches, fetches and summarises sources.
+        // Searches, fetches and summarises sources.
         id: "researcher",
         name: "Researcher",
         workspace: "~/.openclaw/workspace-researcher",
@@ -22,9 +60,8 @@
           primary: "nvidia/meta/llama-3.3-70b-instruct",
           fallbacks: [
             "nvidia/nvidia/llama-3.1-nemotron-70b-instruct",
-            // Cheap paid account(s) go here once you know the model id, e.g.:
-            // "openrouter/<provider>/<model>",
-            "anthropic/claude-haiku-4-5",
+            // Future paid accounts go here, e.g. "openrouter/<provider>/<model>",
+            "ollama-pool/llama3.1:8b",
           ],
         },
         tools: {
@@ -33,7 +70,7 @@
         },
       },
       {
-        // Cheap tier: dedupes notes, flags conflicts and gaps. No web access, so it can't wander.
+        // Dedupes notes, flags conflicts and gaps. No web access, so it can't wander.
         id: "research-checker",
         name: "Research Checker",
         workspace: "~/.openclaw/workspace-research-checker",
@@ -41,8 +78,7 @@
           primary: "nvidia/nvidia/llama-3.1-nemotron-70b-instruct",
           fallbacks: [
             "nvidia/meta/llama-3.3-70b-instruct",
-            // "openrouter/<provider>/<model>",
-            "anthropic/claude-haiku-4-5",
+            "ollama-pool/llama3.1:8b",
           ],
         },
         tools: { allow: ["session_status"] },
